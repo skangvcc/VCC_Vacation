@@ -5,17 +5,44 @@ import calendar
 import io
 from streamlit_drawable_canvas import st_canvas
 import holidays
+import smtplib
+from email.mime.text import MIMEText
 
 # --- 1. Page Configuration ---
 st.set_page_config(page_title="캐나다 본한인교회 사역자 및 직원 휴가 시스템", layout="wide")
+
+# --- ⚙️ EMAIL CONFIGURATION (Gmail Example) ---
+# To use Gmail, you must generate an "App Password" in your Google Account security settings.
+SMTP_SERVER = "gmail.com"
+SMTP_PORT = 587
+SENDER_EMAIL = "your-church-email@gmail.com"      # Replace with Church Email
+SENDER_PASSWORD = "xxxx-xxxx-xxxx-xxxx"           # Replace with 16-character App Password
+ADMIN_NOTIFY_EMAIL = "admin-records@gmail.com"     # Replace with Senior Pastor/Admin Email
 
 # Initialize Admin Password in Session State if not present
 if 'admin_password' not in st.session_state:
     st.session_state.admin_password = "1234"  # Default password
 
-# --- 2. Dynamic Ontario Holidays Loader ---
+# --- 2. Automated Email Sender Logic ---
+def send_confirmation_email(recipient_email, subject, body_text):
+    """Sends an automated secure email using the configured SMTP server."""
+    try:
+        msg = MIMEText(body_text)
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
+        return True
+    except Exception as e:
+        st.error(f"⚠️ 이메일 발송 실패 (Email Send Failed): {e}")
+        return False
+
+# --- 3. Dynamic Ontario Holidays Loader ---
 def get_ontario_holidays(year):
-    """Returns a dictionary of statutory holidays in Ontario for the given year."""
     ca_on_holidays = holidays.Canada(subdiv='ON', years=year)
     holiday_dict = {}
     for date, name in sorted(ca_on_holidays.items()):
@@ -26,7 +53,7 @@ def get_ontario_holidays(year):
         holiday_dict[date.strftime("%Y-%m-%d")] = name
     return holiday_dict
 
-# --- 3. Custom CSS Styles for Dashboard UI ---
+# --- 4. Custom CSS Styles for Dashboard UI ---
 st.markdown("""
 <style>
     .app-title { font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px; }
@@ -54,7 +81,6 @@ st.markdown("""
     .bg-sub-pastor { background-color: #4A76A8; }
     .bg-helper { background-color: #549A74; }
     .bg-staff { background-color: #A370A8; }
-    
     .name-text { font-size: 16px; font-weight: bold; color: #222; margin: 0; }
     .pos-text { font-size: 13px; color: #777; margin: 0; }
     .usage-text { font-size: 14px; color: #555; }
@@ -62,7 +88,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. Initialize Local App Memory with Blank Emails ---
+# --- 5. Initialize Local App Memory with Blank Emails ---
 if 'staff' not in st.session_state or st.session_state.staff.empty:
     st.session_state.staff = pd.DataFrame([
         {'Name': '고영민', 'Position': '목사', 'Total_Leave': 20, 'Email': ''},
@@ -91,7 +117,6 @@ if 'leaves' not in st.session_state:
 if 'menu_sel' not in st.session_state:
     st.session_state.menu_sel = "현황"
 
-# Weekend & Holiday Leave Calculation Logic
 def calculate_church_days(start_date, end_date, l_type):
     if l_type == "Half": return 0.5
     days = 0
@@ -103,24 +128,23 @@ def calculate_church_days(start_date, end_date, l_type):
         curr += timedelta(days=1)
     return days
 
-# --- 5. Main Title & Horizontal Navigation Layout ---
+# --- 6. Main Title & Horizontal Navigation Layout ---
 st.markdown('<p class="app-title">🇨🇦 캐나다 본한인교회 사역자 및 직원 휴가 시스템</p>', unsafe_allow_html=True)
 
 m_cols = st.columns(5)
-if m_cols[0].button("📊 현황", use_container_width=True): st.session_state.menu_sel = "현황"
-if m_cols[1].button("📅 달력", use_container_width=True): st.session_state.menu_sel = "달력"
-if m_cols[2].button("🔒 직원", use_container_width=True): st.session_state.menu_sel = "직원"
-if m_cols[3].button("📝 신청", use_container_width=True): st.session_state.menu_sel = "신청"
-if m_cols[4].button("📋 내역", use_container_width=True): st.session_state.menu_sel = "내역"
+if m_cols.button("📊 현황", use_container_width=True): st.session_state.menu_sel = "현황"
+if m_cols.button("📅 달력", use_container_width=True): st.session_state.menu_sel = "달력"
+if m_cols.button("🔒 직원", use_container_width=True): st.session_state.menu_sel = "직원"
+if m_cols.button("📝 신청", use_container_width=True): st.session_state.menu_sel = "신청"
+if m_cols.button("📋 내역", use_container_width=True): st.session_state.menu_sel = "내역"
 
 st.write("")
 
-# Dynamic Calculations
 total_staff = len(st.session_state.staff)
 total_approved = st.session_state.leaves[st.session_state.leaves['Status'] == 'Approved']['Days'].sum() if not st.session_state.leaves.empty else 0
 total_pending = len(st.session_state.leaves[st.session_state.leaves['Status'] == 'Pending']) if not st.session_state.leaves.empty else 0
 
-# --- 6. Menu Interfaces ---
+# --- 7. Menu Interfaces ---
 if st.session_state.menu_sel == "현황":
     c1, c2, c3 = st.columns(3)
     c1.markdown(f'<div class="card-box"><div class="card-label">전체 사역자 및 직원</div><div class="card-value val-blue">{total_staff}명</div></div>', unsafe_allow_html=True)
@@ -207,14 +231,13 @@ elif st.session_state.menu_sel == "달력":
                 else:
                     cols[i].write(day)
 
-# --- 🔒 Staff Management Panel (With Password Config) ---
+# --- 🔒 Staff Management Panel (With Password Alert Emails) ---
 elif st.session_state.menu_sel == "직원":
     st.title("👤 사역자 명단 관리 및 편집")
     pw = st.sidebar.text_input("관리자 비밀번호", type="password")
     
     if pw == st.session_state.admin_password:
-        # Layout Split: Left for editing list, Right for password configuration settings
-        main_col, side_panel = st.columns([3, 1])
+        main_col, side_panel = st.columns([3, 1.5])
         
         with main_col:
             st.info("💡 아래 테이블에서 내용을 직접 수정한 후 반드시 하단의 저장 버튼을 눌러주세요.")
@@ -230,6 +253,9 @@ elif st.session_state.menu_sel == "직원":
         with side_panel:
             st.markdown("<div style='background-color:#F0F2F6; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
             st.subheader("⚙️ 비밀번호 변경")
+            
+            # Form UI to gather targets
+            changer_name = st.selectbox("변경을 수행하는 본인 선택", st.session_state.staff['Name'])
             new_pw = st.text_input("새로운 비밀번호 설정", type="password")
             confirm_pw = st.text_input("비밀번호 확인", type="password")
             
@@ -237,8 +263,31 @@ elif st.session_state.menu_sel == "직원":
                 if new_pw == "":
                     st.error("공백은 비밀번호로 사용할 수 없습니다.")
                 elif new_pw == confirm_pw:
+                    # Update local state
                     st.session_state.admin_password = new_pw
-                    st.success("비밀번호가 성공적으로 변경되었습니다! 다음 접속부터 적용됩니다.")
+                    
+                    # Email Content Layout Structure
+                    timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    email_subject = "🔑 [본한인교회 휴가시스템] 관리자 비밀번호 변경 알림"
+                    email_body = f"""본한인교회 사역자 및 직원 휴가 시스템 알림입니다.
+                    
+[비밀번호 변경 내역]
+- 수행자: {changer_name}
+- 일시: {timestamp_now}
+
+보안 유지를 위해 관리자 외 타인에게 비밀번호가 유출되지 않도록 각별히 유의해 주시기 바랍니다."""
+
+                    # 1. Send to Admin Record Vault Email
+                    send_confirmation_email(ADMIN_NOTIFY_EMAIL, email_subject, email_body)
+                    
+                    # 2. Extract and send to specific staff member (if email exists)
+                    staff_row = st.session_state.staff[st.session_state.staff['Name'] == changer_name]
+                    if not staff_row.empty:
+                        user_email = staff_row.iloc[0]['Email']
+                        if user_email:
+                            send_confirmation_email(user_email, email_subject, email_body)
+                    
+                    st.success("🎉 비밀번호가 변경되었으며 본인과 최고 관리자에게 확인 메일이 발송되었습니다!")
                 else:
                     st.error("새 비밀번호와 확인란이 일치하지 않습니다.")
             st.markdown("</div>", unsafe_allow_html=True)
