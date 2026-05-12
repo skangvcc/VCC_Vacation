@@ -9,6 +9,10 @@ import holidays
 # --- 1. Page Configuration ---
 st.set_page_config(page_title="캐나다 본한인교회 사역자 및 직원 휴가 시스템", layout="wide")
 
+# Initialize Admin Password in Session State if not present
+if 'admin_password' not in st.session_state:
+    st.session_state.admin_password = "1234"  # Default password
+
 # --- 2. Dynamic Ontario Holidays Loader ---
 def get_ontario_holidays(year):
     """Returns a dictionary of statutory holidays in Ontario for the given year."""
@@ -203,23 +207,43 @@ elif st.session_state.menu_sel == "달력":
                 else:
                     cols[i].write(day)
 
+# --- 🔒 Staff Management Panel (With Password Config) ---
 elif st.session_state.menu_sel == "직원":
     st.title("👤 사역자 명단 관리 및 편집")
     pw = st.sidebar.text_input("관리자 비밀번호", type="password")
     
-    if pw == "1234":
-        st.info("💡 아래 테이블에서 내용을 직접 수정한 후 반드시 하단의 저장 버튼을 눌러주세요.")
-        edited_staff = st.data_editor(st.session_state.staff, num_rows="dynamic", use_container_width=True)
+    if pw == st.session_state.admin_password:
+        # Layout Split: Left for editing list, Right for password configuration settings
+        main_col, side_panel = st.columns([3, 1])
         
-        if st.button("💾 변경사항 최종 저장"):
-            if not edited_staff.empty:
-                edited_staff['Total_Leave'] = edited_staff['Total_Leave'].astype(int)
-            st.session_state.staff = edited_staff
-            st.success("🎉 사역자 명단이 편집 및 저장되었습니다!")
-            st.rerun()
+        with main_col:
+            st.info("💡 아래 테이블에서 내용을 직접 수정한 후 반드시 하단의 저장 버튼을 눌러주세요.")
+            edited_staff = st.data_editor(st.session_state.staff, num_rows="dynamic", use_container_width=True)
+            
+            if st.button("💾 변경사항 최종 저장"):
+                if not edited_staff.empty:
+                    edited_staff['Total_Leave'] = edited_staff['Total_Leave'].astype(int)
+                st.session_state.staff = edited_staff
+                st.success("🎉 사역자 명단이 편집 및 저장되었습니다!")
+                st.rerun()
+                
+        with side_panel:
+            st.markdown("<div style='background-color:#F0F2F6; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
+            st.subheader("⚙️ 비밀번호 변경")
+            new_pw = st.text_input("새로운 비밀번호 설정", type="password")
+            confirm_pw = st.text_input("비밀번호 확인", type="password")
+            
+            if st.button("🔑 비밀번호 업데이트"):
+                if new_pw == "":
+                    st.error("공백은 비밀번호로 사용할 수 없습니다.")
+                elif new_pw == confirm_pw:
+                    st.session_state.admin_password = new_pw
+                    st.success("비밀번호가 성공적으로 변경되었습니다! 다음 접속부터 적용됩니다.")
+                else:
+                    st.error("새 비밀번호와 확인란이 일치하지 않습니다.")
+            st.markdown("</div>", unsafe_allow_html=True)
     else:
-        # [수정완료] 노골적인 "1234" 비밀번호 텍스트를 제거하여 일반 유저에게 보이지 않도록 숨겼습니다.
-        st.warning("사역자 명단을 수정하려면 사이드바에 올바른 관리자 비밀번호를 입력하십시오.")
+        st.warning("사역자 명단을 수정하거나 비밀번호를 정정하려면 사이드바에 올바른 관리자 비밀번호를 입력하십시오.")
         st.data_editor(st.session_state.staff, use_container_width=True, disabled=True)
 
 elif st.session_state.menu_sel == "신청":
@@ -250,10 +274,9 @@ elif st.session_state.menu_sel == "내역":
     
     st.write("---")
     pw = st.sidebar.text_input("관리자 비밀번호", type="password")
-    if pw == "1234":
+    if pw == st.session_state.admin_password:
         st.subheader("실시간 결재 승인 패널")
         
-        # [수정완료] Status 컬럼을 클릭 시 Pending, Approved, Rejected만 고를 수 있는 드롭다운 메뉴로 개조했습니다.
         edited = st.data_editor(
             st.session_state.leaves, 
             num_rows="dynamic",
