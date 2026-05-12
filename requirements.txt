@@ -3,3 +3,4 @@ pandas
 xlsxwriter
 streamlit-drawable-canvas
 holidays
+gspread
