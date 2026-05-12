@@ -218,7 +218,8 @@ elif st.session_state.menu_sel == "직원":
             st.success("🎉 사역자 명단이 편집 및 저장되었습니다!")
             st.rerun()
     else:
-        st.warning("사역자 명단을 수정하려면 사이드바에 올바른 관리자 비밀번호(1234)를 입력하십시오.")
+        # [수정완료] 노골적인 "1234" 비밀번호 텍스트를 제거하여 일반 유저에게 보이지 않도록 숨겼습니다.
+        st.warning("사역자 명단을 수정하려면 사이드바에 올바른 관리자 비밀번호를 입력하십시오.")
         st.data_editor(st.session_state.staff, use_container_width=True, disabled=True)
 
 elif st.session_state.menu_sel == "신청":
@@ -251,7 +252,22 @@ elif st.session_state.menu_sel == "내역":
     pw = st.sidebar.text_input("관리자 비밀번호", type="password")
     if pw == "1234":
         st.subheader("실시간 결재 승인 패널")
-        edited = st.data_editor(st.session_state.leaves, num_rows="dynamic")
+        
+        # [수정완료] Status 컬럼을 클릭 시 Pending, Approved, Rejected만 고를 수 있는 드롭다운 메뉴로 개조했습니다.
+        edited = st.data_editor(
+            st.session_state.leaves, 
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Status": st.column_config.SelectboxColumn(
+                    "결재 상태 (Status)",
+                    help="휴가 승인 상태를 변경하세요",
+                    width="medium",
+                    options=["Pending", "Approved", "Rejected"],
+                    required=True,
+                )
+            }
+        )
         if st.button("수정사항 최종 저장"):
             st.session_state.leaves = edited
             st.success("결재 내역 저장이 완료되었습니다!")
