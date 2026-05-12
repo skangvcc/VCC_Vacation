@@ -43,6 +43,7 @@ def send_confirmation_email(recipient_email, subject, body_text):
 
 # --- 3. Dynamic Ontario Holidays Loader ---
 def get_ontario_holidays(year):
+    """Returns a dictionary of statutory holidays in Ontario for the given year."""
     ca_on_holidays = holidays.Canada(subdiv='ON', years=year)
     holiday_dict = {}
     for date, name in sorted(ca_on_holidays.items()):
@@ -81,6 +82,7 @@ st.markdown("""
     .bg-sub-pastor { background-color: #4A76A8; }
     .bg-helper { background-color: #549A74; }
     .bg-staff { background-color: #A370A8; }
+    
     .name-text { font-size: 16px; font-weight: bold; color: #222; margin: 0; }
     .pos-text { font-size: 13px; color: #777; margin: 0; }
     .usage-text { font-size: 14px; color: #555; }
@@ -117,6 +119,7 @@ if 'leaves' not in st.session_state:
 if 'menu_sel' not in st.session_state:
     st.session_state.menu_sel = "현황"
 
+# Weekend & Holiday Leave Calculation Logic
 def calculate_church_days(start_date, end_date, l_type):
     if l_type == "Half": return 0.5
     days = 0
@@ -128,15 +131,16 @@ def calculate_church_days(start_date, end_date, l_type):
         curr += timedelta(days=1)
     return days
 
-# --- 6. Main Title & Horizontal Navigation Layout ---
+# --- 6. Main Title & Horizontal Navigation Layout (FIXED) ---
 st.markdown('<p class="app-title">🇨🇦 캐나다 본한인교회 사역자 및 직원 휴가 시스템</p>', unsafe_allow_html=True)
 
 m_cols = st.columns(5)
-if m_cols.button("📊 현황", use_container_width=True): st.session_state.menu_sel = "현황"
-if m_cols.button("📅 달력", use_container_width=True): st.session_state.menu_sel = "달력"
-if m_cols.button("🔒 직원", use_container_width=True): st.session_state.menu_sel = "직원"
-if m_cols.button("📝 신청", use_container_width=True): st.session_state.menu_sel = "신청"
-if m_cols.button("📋 내역", use_container_width=True): st.session_state.menu_sel = "내역"
+# Explicit index anchors applied to isolate each horizontal selection element
+if m_cols[0].button("📊 현황", use_container_width=True): st.session_state.menu_sel = "현황"
+if m_cols[1].button("📅 달력", use_container_width=True): st.session_state.menu_sel = "달력"
+if m_cols[2].button("🔒 직원", use_container_width=True): st.session_state.menu_sel = "직원"
+if m_cols[3].button("📝 신청", use_container_width=True): st.session_state.menu_sel = "신청"
+if m_cols[4].button("📋 내역", use_container_width=True): st.session_state.menu_sel = "내역"
 
 st.write("")
 
@@ -231,7 +235,7 @@ elif st.session_state.menu_sel == "달력":
                 else:
                     cols[i].write(day)
 
-# --- 🔒 Staff Management Panel (With Password Alert Emails) ---
+# --- 🔒 Staff Management Panel (With Password Config) ---
 elif st.session_state.menu_sel == "직원":
     st.title("👤 사역자 명단 관리 및 편집")
     pw = st.sidebar.text_input("관리자 비밀번호", type="password")
@@ -254,7 +258,6 @@ elif st.session_state.menu_sel == "직원":
             st.markdown("<div style='background-color:#F0F2F6; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
             st.subheader("⚙️ 비밀번호 변경")
             
-            # Form UI to gather targets
             changer_name = st.selectbox("변경을 수행하는 본인 선택", st.session_state.staff['Name'])
             new_pw = st.text_input("새로운 비밀번호 설정", type="password")
             confirm_pw = st.text_input("비밀번호 확인", type="password")
@@ -263,10 +266,8 @@ elif st.session_state.menu_sel == "직원":
                 if new_pw == "":
                     st.error("공백은 비밀번호로 사용할 수 없습니다.")
                 elif new_pw == confirm_pw:
-                    # Update local state
                     st.session_state.admin_password = new_pw
                     
-                    # Email Content Layout Structure
                     timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     email_subject = "🔑 [본한인교회 휴가시스템] 관리자 비밀번호 변경 알림"
                     email_body = f"""본한인교회 사역자 및 직원 휴가 시스템 알림입니다.
@@ -277,10 +278,8 @@ elif st.session_state.menu_sel == "직원":
 
 보안 유지를 위해 관리자 외 타인에게 비밀번호가 유출되지 않도록 각별히 유의해 주시기 바랍니다."""
 
-                    # 1. Send to Admin Record Vault Email
                     send_confirmation_email(ADMIN_NOTIFY_EMAIL, email_subject, email_body)
                     
-                    # 2. Extract and send to specific staff member (if email exists)
                     staff_row = st.session_state.staff[st.session_state.staff['Name'] == changer_name]
                     if not staff_row.empty:
                         user_email = staff_row.iloc[0]['Email']
