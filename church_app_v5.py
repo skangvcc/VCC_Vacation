@@ -11,6 +11,7 @@ st.set_page_config(page_title="캐나다 본한인교회 사역자 및 직원 �
 
 # --- 2. Dynamic Ontario Holidays Loader ---
 def get_ontario_holidays(year):
+    """Returns a dictionary of statutory holidays in Ontario for the given year."""
     ca_on_holidays = holidays.Canada(subdiv='ON', years=year)
     holiday_dict = {}
     for date, name in sorted(ca_on_holidays.items()):
@@ -49,6 +50,7 @@ st.markdown("""
     .bg-sub-pastor { background-color: #4A76A8; }
     .bg-helper { background-color: #549A74; }
     .bg-staff { background-color: #A370A8; }
+    
     .name-text { font-size: 16px; font-weight: bold; color: #222; margin: 0; }
     .pos-text { font-size: 13px; color: #777; margin: 0; }
     .usage-text { font-size: 14px; color: #555; }
@@ -56,27 +58,27 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. Initialize Local App Memory ---
+# --- 4. Initialize Local App Memory with Blank Emails ---
 if 'staff' not in st.session_state or st.session_state.staff.empty:
     st.session_state.staff = pd.DataFrame([
-        {'Name': '고영민', 'Position': '목사', 'Total_Leave': 20, 'Email': 'go@church.com'},
-        {'Name': '강진숙', 'Position': '부목사', 'Total_Leave': 15, 'Email': 'kang@church.com'},
-        {'Name': '이중석', 'Position': '부목사', 'Total_Leave': 15, 'Email': 'lee1@church.com'},
-        {'Name': '최민수', 'Position': '부목사', 'Total_Leave': 15, 'Email': 'choi@church.com'},
-        {'Name': '김제훈', 'Position': '부목사', 'Total_Leave': 15, 'Email': 'kim1@church.com'},
-        {'Name': '이병학', 'Position': '전도사', 'Total_Leave': 15, 'Email': 'lee2@church.com'},
-        {'Name': '권영미', 'Position': '전도사', 'Total_Leave': 15, 'Email': 'kwon@church.com'},
-        {'Name': '안휘수', 'Position': '부목사', 'Total_Leave': 15, 'Email': 'ahn@church.com'},
-        {'Name': '김현주', 'Position': '전도사', 'Total_Leave': 15, 'Email': 'kim2@church.com'},
-        {'Name': '이혜빈', 'Position': '간사', 'Total_Leave': 15, 'Email': 'lee3@church.com'},
-        {'Name': '김혜진', 'Position': '간사', 'Total_Leave': 15, 'Email': 'kim3@church.com'},
-        {'Name': '신근수', 'Position': '간사', 'Total_Leave': 15, 'Email': 'shin@church.com'},
-        {'Name': '임주현', 'Position': '사무', 'Total_Leave': 15, 'Email': 'lim@church.com'},
-        {'Name': '원재엽', 'Position': '관리', 'Total_Leave': 15, 'Email': 'won@church.com'},
-        {'Name': '정주현', 'Position': '미디어', 'Total_Leave': 15, 'Email': 'jung@church.com'},
-        {'Name': '한난희', 'Position': '미디어', 'Total_Leave': 15, 'Email': 'han@church.com'},
-        {'Name': '박은국', 'Position': '미디어', 'Total_Leave': 15, 'Email': 'park@church.com'},
-        {'Name': '민옥화', 'Position': '재정부', 'Total_Leave': 15, 'Email': 'min@church.com'}
+        {'Name': '고영민', 'Position': '목사', 'Total_Leave': 20, 'Email': ''},
+        {'Name': '강진숙', 'Position': '부목사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '이중석', 'Position': '부목사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '최민수', 'Position': '부목사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '김제훈', 'Position': '부목사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '이병학', 'Position': '전도사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '권영미', 'Position': '전도사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '안휘수', 'Position': '전도사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '김현주', 'Position': '전도사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '이혜빈', 'Position': '간사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '김혜진', 'Position': '간사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '신근수', 'Position': '간사', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '임주현', 'Position': '사무', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '원재엽', 'Position': '관리', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '정주현', 'Position': '미디어', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '한난희', 'Position': '미디어', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '박은국', 'Position': '미디어', 'Total_Leave': 15, 'Email': ''},
+        {'Name': '민옥화', 'Position': '재정부', 'Total_Leave': 15, 'Email': ''}
     ])
 
 if 'leaves' not in st.session_state:
@@ -117,16 +119,18 @@ total_pending = len(st.session_state.leaves[st.session_state.leaves['Status'] ==
 # --- 6. Menu Interfaces ---
 if st.session_state.menu_sel == "현황":
     c1, c2, c3 = st.columns(3)
-    c1.markdown(f'<div class="card-box"><div class="card-label">전체 직원</div><div class="card-value val-blue">{total_staff}명</div></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="card-box"><div class="card-label">총사용 휴가</div><div class="card-value val-green">{int(total_approved)}일</div></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="card-box"><div class="card-label">대기 중</div><div class="card-value val-yellow">{total_pending}건</div></div>', unsafe_allow_html=True)
+    c1.markdown(f'<div class="card-box"><div class="card-label">전체 사역자 및 직원</div><div class="card-value val-blue">{total_staff}명</div></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="card-box"><div class="card-label">총사용 휴가 일수</div><div class="card-value val-green">{int(total_approved)}일</div></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="card-box"><div class="card-label">승인 대기 건수</div><div class="card-value val-yellow">{total_pending}건</div></div>', unsafe_allow_html=True)
     
     st.markdown('<div class="list-container">', unsafe_allow_html=True)
     for idx, row in st.session_state.staff.iterrows():
         name = row['Name']
         pos = row['Position']
         total = int(row['Total_Leave'])
-        used = st.session_state.leaves[(st.session_state.leaves['Name'] == name) & (st.session_state.leaves['Status'] == 'Approved')]['Days'].sum() if not st.session_state.leaves.empty else 0
+        
+        person_leaves = st.session_state.leaves[(st.session_state.leaves['Name'] == name) & (st.session_state.leaves['Status'] == 'Approved')]
+        used = person_leaves['Days'].sum() if not person_leaves.empty else 0
         rem = total - used
         percent = (used / total) if total > 0 else 0
         
@@ -135,12 +139,26 @@ if st.session_state.menu_sel == "현황":
         elif "전도사" in pos: bg_class = "bg-helper"
         else: bg_class = "bg-staff"
         
-        sc1, sc2, sc3, sc4 = st.columns([2, 4, 3, 1.5])
+        sc1, sc2, sc3, sc4 = st.columns([2, 4, 3.5, 1.5])
+        
         sc1.markdown(f'<div style="display:flex; align-items:center;"><div class="profile-circle {bg_class}">{name[:2]}</div><div><p class="name-text">{name}</p><p class="pos-text">{pos}</p></div></div>', unsafe_allow_html=True)
-        sc2.markdown(f'<p class="usage-text">사용 {int(used)}일 / 전체 {int(total)}일</p>', unsafe_allow_html=True)
+        sc2.markdown(f'<p class="usage-text">총 사용 {int(used)}일 / 연간 총 한도 {int(total)}일</p>', unsafe_allow_html=True)
         sc2.progress(min(percent, 1.0))
-        sc4.markdown(f'<p class="rem-text">잔여 <span style="font-size:16px;">{int(rem)}일</span></p>', unsafe_allow_html=True)
-        st.markdown('<hr style="margin:8px 0; border:0; border-top:1px solid #F5F5F5;">', unsafe_allow_html=True)
+        
+        types = ["Vacation", "Half", "Sick", "Unpaid"]
+        breakdown_items = []
+        for t in types:
+            t_days = person_leaves[person_leaves['Type'] == t]['Days'].sum() if not person_leaves.empty else 0
+            if t_days > 0:
+                breakdown_items.append(f"<b>{t}</b>: {t_days:g}일")
+        
+        if breakdown_items:
+            sc3.markdown("<p style='font-size:12px; color:#555; margin-top:8px;'>🍁 <b>종류별 내역:</b><br>" + " | ".join(breakdown_items) + "</p>", unsafe_allow_html=True)
+        else:
+            sc3.markdown("<p style='font-size:12px; color:#999; margin-top:18px;'>사용 이력 없음</p>", unsafe_allow_html=True)
+        
+        sc4.markdown(f'<p class="rem-text" style="line-height:1.3;">잔여 일수<br><span style="font-size:18px; color:#2E5B88;">{int(rem)}일</span></p>', unsafe_allow_html=True)
+        st.markdown('<hr style="margin:12px 0; border:0; border-top:1px solid #F5F5F5;">', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 elif st.session_state.menu_sel == "달력":
